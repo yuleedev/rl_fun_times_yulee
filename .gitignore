@@ -168,3 +168,16 @@ cython_debug/
 # stay tracked so a clone can run the agent.
 models/ntuple_files/ntuple_*.npz
 !models/ntuple_files/ntuple_final.npz
+models/ntuple_files/oi/
+
+# PyCharm project settings, local to one machine
+.idea/
+
+# scratch helpers for watching batch runs, not part of the project
+progress.sh
+results.sh
+
+# recorded games. one is committed by name as the score board entry, the rest
+# are just batch output
+replays/*.json
+!replays/attempt_30.json
