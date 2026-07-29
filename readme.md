@@ -43,7 +43,7 @@ conda env create -f environment.yml
 conda activate rl_fun_times
 ```
 
-Then run any of the runnable files below. Note that pygame comes from pip on purpose (the conda-forge build has a broken SDL dependency on Windows) — the environment.yml already handles this, so don't swap it over to conda's package.
+Then run any of the runnable files below. Note that pygame comes from pip on purpose, since the conda-forge build has a broken SDL dependency on Windows. The environment.yml already handles this, so don't swap it over to conda's package.
 
 # File breakdown
 
@@ -59,15 +59,21 @@ rl_fun_times -> models :: Directory containing training and inference classes fo
 
 - dq_model_files :: directory of saved model weights for a given DQN RL agent
 - q_table_files :: directory of saved q table dumps for a given Qlearning RL agent
+- ntuple_files :: directory of saved n-tuple network weights (.npz)
 - DQAgentInference :: Inference agent, loads DQN RL agent weights and gives the trained policy's actions
 - DQAgentTrainer :: Training agent, defines and trains a DQN RL agent, contains logic of updating the RL algorithm
 - QAgentInference :: Inference agent, loads a q-table dictionary and gives the trained q-table's actions
 - QAgentTrainer :: Training agent, defines and trains a q-table dictionary, contains logic of updating the q table
+- NTupleNetwork :: the n-tuple value function, one weight table per 6-cell pattern, 8 symmetries sharing each table
+- NTupleTrainer :: TD(0) learning on afterstates, with temporal-coherence adaptive learning rates
+- NTupleInference :: Inference agent, loads n-tuple weights and optionally runs expectimax search on top
 
 rl_fun_times -> utils :: Directory containing helper functions and general utilities
 
 - logger :: basic logger that is vastly un-utilized. This may be a good starter task for a PR (wink wink)
-- state_keys :: symmetry canonicalization for the Q-table — all 8 rotations/mirrors of a board share one table entry. Both Q agents use it so training and inference always agree on keys
+- state_keys :: symmetry canonicalization for the Q-table, so all 8 rotations/mirrors of a board share one table entry. Both Q agents use it so training and inference agree on keys
+- bitboard :: fast re-implementation of the Avalanche board mechanics, whole board packed into one 64-bit int, row slides precomputed into a lookup table. Used for training and search only, never for reported scores
+- expectimax :: depth-limited expectimax over the n-tuple value function. MAX nodes are our moves, CHANCE nodes average over the 50/50 spawn
 
 rl_fun_times -> top level files :: the following are files directly in the top level directory
 
@@ -86,6 +92,9 @@ rl_fun_times -> top level files :: the following are files directly in the top l
 - readme.md :: this document :)
 - rl_play.py :: runnable file! Executes a large number of games using an RL algorithm, shows some basic results
 - rl_training.py :: runnable file! Trains an RL agent, settable hyper parameters and file I/O
+- train_ntuple.py :: runnable file! Trains the n-tuple network with TD(0) afterstate learning. `python train_ntuple.py --games 100000`
+- play_ntuple.py :: runnable file! Plays games with the trained n-tuple agent through the real env. `python play_ntuple.py --games 100 --depth 3`
+- verify_fast_env.py :: runnable file! Fuzz-tests utils/bitboard.py against envs/SGAI_2048.py, comparing slides, scores, game-over, and full games in lockstep. Run it after touching either file
 - ruff.toml :: lint config. Keeps ruff from stripping the intentionally "unused" imports in rl_training.py (the Q vs DQ toggle)
 
 Peppered around are various \*.log files. I do not handle logging very well which explains this phenomenon. Maybe someone will fix it.
@@ -103,9 +112,12 @@ Play Modes: These do NOT load the GUI and runs multiple games at a time, variant
 - Algo play :: Runs many games with a human algo playing, shows some basic outputs
 - RL play :: Runs many games with an RL algo playing, shows some basic outputs
 
+- N-tuple play :: Runs many games with the n-tuple agent, optional expectimax search (`play_ntuple.py`)
+
 Training Modes: This mode does NOT load the GUI and runs multiple games at a time, no variants
 
 - RL Training :: Sets up and trains an RL agent, saves model periodically during training, basic outputs and plotting
+- N-tuple Training :: TD(0) afterstate learning for the n-tuple network, checkpoints as it goes, Ctrl-C saves rather than discards (`train_ntuple.py`)
 
 # Score Board
 

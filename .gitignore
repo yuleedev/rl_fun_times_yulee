@@ -163,3 +163,21 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 .vscode/settings.json
+
+# n-tuple training checkpoints, ~30 MB each, one every 10k games. Final weights
+# stay tracked so a clone can run the agent.
+models/ntuple_files/ntuple_*.npz
+!models/ntuple_files/ntuple_final.npz
+models/ntuple_files/oi/
+
+# PyCharm project settings, local to one machine
+.idea/
+
+# scratch helpers for watching batch runs, not part of the project
+progress.sh
+results.sh
+
+# recorded games. one is committed by name as the score board entry, the rest
+# are just batch output
+replays/*.json
+!replays/attempt_30.json

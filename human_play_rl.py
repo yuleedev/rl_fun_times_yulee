@@ -4,17 +4,24 @@ import matplotlib.pyplot as plt
 from typing import List, Dict, Union
 import pygame
 from envs.SGAI_2048 import SGAI_2048, Act2048
-from models.QAgentInference import QAgentInference
+from models.NTupleInference import NTupleInference
 from utils.logger import logger
+from utils.renderer import Board2048Renderer
 
 logger.setLevel(logging.INFO)
 
-# Create the env directly f rom the class without registering it with gym (more pythonic and clean imho)
-env = SGAI_2048(render_mode="human", num_rows=4, num_cols=4)
+# rl-headless keeps the env from drawing its own window, so the original 2048
+# palette in utils/renderer.py is the only thing on screen
+env = SGAI_2048(render_mode="rl-headless", num_rows=4, num_cols=4)
+renderer = Board2048Renderer()
 
 # Create Agents to play
-model_weights_path = os.path.join("models", "q_table_files", "q_table_final.pickle")
-rl_agent = QAgentInference(q_table_file_path=model_weights_path)
+# Only one game with the GUI, so search is affordable here. A budget of 2000
+# costs about 20ms per move, well under the 4 fps the renderer runs at.
+model_weights_path = os.path.join("models", "ntuple_files", "ntuple_final.npz")
+rl_agent = NTupleInference(weights_file_path=model_weights_path, node_budget=2_000)
+# model_weights_path = os.path.join('models', 'q_table_files', 'q_table_final.pickle')
+# rl_agent = QAgentInference(q_table_file_path=model_weights_path)
 # model_weights_path = os.path.join('models', 'dq_model_files', 'dq_policy_final.pth')
 # rl_agent = DQAgentInference(model_file_path=model_weights_path)
 
@@ -32,6 +39,8 @@ all_actions: Dict[Act2048, int] = {
 obs_, info_ = env.reset()
 run_: bool = True
 turn_: int = 0
+renderer.draw(env.board, env.total_score, status="press space to advance a turn",
+              highest_tile=env.highest_tile)
 
 # Start running the game until the game is done
 while run_:
@@ -40,6 +49,10 @@ while run_:
     show_next: bool = False
     events = pygame.event.get()
     for event in events:
+        if event.type == pygame.QUIT:
+            overall_score = env.total_score
+            run_ = False
+            break
         if event.type == pygame.KEYDOWN:
             if event.key in [
                 pygame.K_KP_ENTER,
@@ -69,6 +82,12 @@ while run_:
     all_actions[Act2048(action)] += 1
     obs_, reward, terminated, truncated, info_ = env.step(action)
     turn_rewards.append(reward)
+    renderer.draw(
+        env.board,
+        env.total_score,
+        status=f"turn {turn_}   {Act2048(action).name.lower()}   {reward:+}",
+        highest_tile=env.highest_tile,
+    )
     print(
         f"Turn: {turn_}  -  step reward: {reward}  -  total reward: {env.total_score}"
     )
@@ -76,6 +95,8 @@ while run_:
     if terminated or truncated:
         run_ = False
         overall_score = env.total_score
+        renderer.draw_game_over(env.total_score)
+        pygame.time.wait(1500)
 
     turn_ += 1
 

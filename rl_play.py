@@ -3,7 +3,7 @@ import os
 import matplotlib.pyplot as plt
 from typing import List, Dict
 from envs.SGAI_2048 import SGAI_2048, Act2048, logger
-from models.QAgentInference import QAgentInference
+from models.NTupleInference import NTupleInference
 
 logger.setLevel(logging.INFO)
 
@@ -26,8 +26,13 @@ num_games = 500
 max_turns_per_game = 10_000
 
 # Create Agents to play
-model_weights_path = os.path.join("models", "q_table_files", "q_table_final.pickle")
-rl_agent = QAgentInference(q_table_file_path=model_weights_path)
+# node_budget=0 plays the greedy n-tuple policy, which is instant and the right
+# choice for a 500 game batch. play_ntuple.py exposes the search budget if you
+# want the stronger, much slower expectimax agent.
+model_weights_path = os.path.join("models", "ntuple_files", "ntuple_final.npz")
+rl_agent = NTupleInference(weights_file_path=model_weights_path, node_budget=0)
+# model_weights_path = os.path.join('models', 'q_table_files', 'q_table_final.pickle')
+# rl_agent = QAgentInference(q_table_file_path=model_weights_path)
 # model_weights_path = os.path.join('models', 'dq_model_files', 'dq_policy_final.pth')
 # rl_agent = DQAgentInference(model_file_path=model_weights_path)
 
