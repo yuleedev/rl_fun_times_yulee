@@ -1,146 +1,61 @@
-# BWSI SGAI 2026: 2048 Avalanche
+# 2048 Avalanche RL
 
-## What this is
+2048 Avalanche RL is my entry for the reinforcement learning challenge in the Serious Games AI course at MIT Beaver Works Summer Institute (BWSI) 2026. The challenge was to build an agent that gets the highest tile and score it can in "2048 Avalanche," a harder version of 2048. The starter code, game environment, and baseline agents came from the course instructor. I added the n-tuple network agent and the expectimax search.
 
-A sort of competition. Kind of.
+## Result
 
-Because of this I, Jo, will be the final arbiter of all things including rules, judging, change management, and everything else.
+My best agent reached the **16384 tile** with a score of **255,632**. That game is saved in `replays/attempt_30.json`, so you can watch it! Iirc my score was the second or third highest amongst the other competitiors in my cohort :)
 
-There will be a few prizes. I left a few questions and things marked as TODOs in the code. That's one path to points. The other path is to post your best model's highest tile and score. You can do so by editing this readme below (using git).
+| Method | Highest Tile | Score |
+| --- | --- | --- |
+| Down-left greedy (baseline) | 256 | 3,314 |
+| Q-learning (baseline) | 512 | 3,662 |
+| Deep Q-learning (baseline) | 256 | 2,396 |
+| **N-tuple network + expectimax (mine)** | **16384** | **255,632** |
 
-Human scores don't count. This is an agent only competition. RL agents are fair game (and probably the favorite). Human encoded algorithms are good too (possible clever solutions). Mixed methods could be fun. Your agent doesn't necessarily need to be deterministic either. You can be creative.
+## How 2048 Avalanche Is Different
 
-The game of the game is an agent playing a variant of 2048 that I call 2048 Avalanche. It's extra collapse-y. I like it and it's different enough from the original 2048 game to make things interesting.
+- Merges chain together, so `[2, 2, 4]` collapses all the way into `[8]`.
+- New tiles are 2 or 4 at a 50/50 chance, not the usual 90/10.
+- A new tile appears every turn, even when your move didn't change the board.
+- A move that changes nothing costs 10 points.
 
-Participation is completely voluntary. This is hopefully a fun RL exercise for those with that craving. We understand it's an interesting topic that pairs very well with serious games.
+## How the Agent Works
 
-You may self form teams or work individually. You may be on more than one team for all I care. I will work alone. I will also work with any TA who wants to team with me. I won't work with students tho, y'all are on your own ;)
+- **N-tuple network:** Scores a board by looking up small groups of 6 cells in large weight tables. All 8 rotations and mirrors of a board share the same tables.
+- **TD(0) training:** The network learns by playing thousands of games on its own. It uses afterstates and temporal coherence, which tunes the learning rate for each weight on its own.
+- **Fast simulator:** The board is packed into one 64-bit integer so training and search run quickly. `verify_fast_env.py` checks that it matches the real game exactly.
+- **Expectimax search:** At play time, the agent looks a few moves ahead and averages over where the next tile could appear. It picks the search depth from a node budget, so each move takes about the same time.
 
-Post your scores below, just have fun playing the human mode of the game, or completely ignore this. Your call!
+## Getting Started/Installation
 
-## Feedback
+Create and activate the conda environment:
 
-I expect it to possibly be a bit rough around the edges. Help me out!
+    conda env create -f environment.yml
+    conda activate rl_fun_times
 
-If you have thoughts to improve let me or your TA know. What can we do to make this more fun? Did I do something wrong in the code? Whatever type of feedback I'm all ears.
+The trained weights are already included in `models/ntuple_files/ntuple_final.npz`.
 
-## Contributions via PRs
+## How to Run
 
-It's possible I messed up coding something. If there's a major error or any kind of fix you'd like me to address, there are a few approaches. You can reach out and we can talk about it like normal.
+**Watch the record game:**
 
-Or, you can try out the github workflow called "Pull Requests". You can pull the repo, create a new branch, and then commit any change you want to make. Fix a bug, correct an error, add extra features, etc...
+    python replay_pygame.py --file replays/attempt_30.json
 
-Once your work is committed and ready to be merged, go to the mit github website and browse to the repo. Open the PR tab and follow the directions specifying your branch to be merged with the branch you want to merge it into. You can make notes and start a discussion while providing the code fix. Tag or Assign the PR to me and I will review and merge. It's pretty easy and something I use multiple times a week in my day to day work.
+**Play games with the trained agent:**
 
-Perhaps the most prolific or critical PR will also get a prize.
+    python play_ntuple.py --games 50 --budget 2000
 
-# Setup
+**Train the agent from scratch:**
 
-Create the conda env and activate it:
+    python train_ntuple.py --games 100000
 
-```
-conda env create -f environment.yml
-conda activate rl_fun_times
-```
+**Play the game yourself:**
 
-Then run any of the runnable files below. Note that pygame comes from pip on purpose, since the conda-forge build has a broken SDL dependency on Windows. The environment.yml already handles this, so don't swap it over to conda's package.
+    python human_play_manual.py
 
-# File breakdown
+## Controls
 
-rl_fun_times :: top level directory for this activity
-
-rl_fun_times -> algos :: Directory containing human written algorithms
-
-- Two given examples are provided :: BadDLOnlyAgent (always down and left) and RandomAgent
-
-rl_fun_times -> envs :: Directory containing the gymnasium compatible 2048 environment, contains all game logic
-
-rl_fun_times -> models :: Directory containing training and inference classes for RL algorithms along with supporting model files in sub directories
-
-- dq_model_files :: directory of saved model weights for a given DQN RL agent
-- q_table_files :: directory of saved q table dumps for a given Qlearning RL agent
-- ntuple_files :: directory of saved n-tuple network weights (.npz)
-- DQAgentInference :: Inference agent, loads DQN RL agent weights and gives the trained policy's actions
-- DQAgentTrainer :: Training agent, defines and trains a DQN RL agent, contains logic of updating the RL algorithm
-- QAgentInference :: Inference agent, loads a q-table dictionary and gives the trained q-table's actions
-- QAgentTrainer :: Training agent, defines and trains a q-table dictionary, contains logic of updating the q table
-- NTupleNetwork :: the n-tuple value function, one weight table per 6-cell pattern, 8 symmetries sharing each table
-- NTupleTrainer :: TD(0) learning on afterstates, with temporal-coherence adaptive learning rates
-- NTupleInference :: Inference agent, loads n-tuple weights and optionally runs expectimax search on top
-
-rl_fun_times -> utils :: Directory containing helper functions and general utilities
-
-- logger :: basic logger that is vastly un-utilized. This may be a good starter task for a PR (wink wink)
-- state_keys :: symmetry canonicalization for the Q-table, so all 8 rotations/mirrors of a board share one table entry. Both Q agents use it so training and inference agree on keys
-- bitboard :: fast re-implementation of the Avalanche board mechanics, whole board packed into one 64-bit int, row slides precomputed into a lookup table. Used for training and search only, never for reported scores
-- expectimax :: depth-limited expectimax over the n-tuple value function. MAX nodes are our moves, CHANCE nodes average over the 50/50 spawn
-
-rl_fun_times -> top level files :: the following are files directly in the top level directory
-
-- 2048_collapse_logic.pptx :: slides showing a crude visualization of the collapsing algorithms
-- algo_play.py :: runnable file! Executes a large number of games using a human algorithm, shows some basic results
-- environment.yml :: conda environment spec, see Setup above
-- human_play_algo.py :: runnable file! Executes a single game showing the UI, moves are selected by a human algorithm
-  - Use w, a, s, d, arrow keys, space, or enter to advance turns
-  - q, backspace, escape, or closing the window to quit
-- human_play_manual.py :: runnable file! Executes a single game showing the UI, moves are entered by you, the player
-  - Use w, a, s, d, arrow keys to collapse in the appropriate direction
-  - q, backspace, escape, or closing the window to quit
-- human_play_rl.py :: runnable file! Executes a single game showing the UI, moves are selected by an RL algorithm
-  - Use w, a, s, d, arrow keys, space, or enter to advance turns
-  - q, backspace, escape, or closing the window to quit
-- readme.md :: this document :)
-- rl_play.py :: runnable file! Executes a large number of games using an RL algorithm, shows some basic results
-- rl_training.py :: runnable file! Trains an RL agent, settable hyper parameters and file I/O
-- train_ntuple.py :: runnable file! Trains the n-tuple network with TD(0) afterstate learning. `python train_ntuple.py --games 100000`
-- play_ntuple.py :: runnable file! Plays games with the trained n-tuple agent through the real env. `python play_ntuple.py --games 100 --depth 3`
-- verify_fast_env.py :: runnable file! Fuzz-tests utils/bitboard.py against envs/SGAI_2048.py, comparing slides, scores, game-over, and full games in lockstep. Run it after touching either file
-- ruff.toml :: lint config. Keeps ruff from stripping the intentionally "unused" imports in rl_training.py (the Q vs DQ toggle)
-
-Peppered around are various \*.log files. I do not handle logging very well which explains this phenomenon. Maybe someone will fix it.
-
-# Run Modes
-
-Human modes: These all load the GUI, variants are provided for each way actions can be selected
-
-- human play -> Algo :: Loads the GUI and the player advances actions determined by a loaded human algorithm
-- human play -> Manual :: Loads the GUI and the player advances actions by inputting them directly
-- human play -> RL :: Loads the GUI and the player advances actions determined by a loaded RL algorithm
-
-Play Modes: These do NOT load the GUI and runs multiple games at a time, variants provided for human algo and RL agents
-
-- Algo play :: Runs many games with a human algo playing, shows some basic outputs
-- RL play :: Runs many games with an RL algo playing, shows some basic outputs
-
-- N-tuple play :: Runs many games with the n-tuple agent, optional expectimax search (`play_ntuple.py`)
-
-Training Modes: This mode does NOT load the GUI and runs multiple games at a time, no variants
-
-- RL Training :: Sets up and trains an RL agent, saves model periodically during training, basic outputs and plotting
-- N-tuple Training :: TD(0) afterstate learning for the n-tuple network, checkpoints as it goes, Ctrl-C saves rather than discards (`train_ntuple.py`)
-
-# Score Board
-
-Scoring is classic 2048: every merge is worth the value of the tile it creates, and a move that changes nothing on the board costs 10 points. The game ends when the board is full and nothing can merge. Rankings sort by highest tile reached first, then by score to break ties. The batch play modes (algo_play and rl_play) print both leaderboard numbers at the end of a run. the baseline RL models were trained for about 10 minutes on Jo's computer. final weights are included in the models/ dir.
-NOTE: do not submit human play scores, my human play score is there only as a quality reference for the baseline RL / Algo scores.
-
-| Name/Initials/Team Name | Highest Tile | Score | Method / Algo Type | Date    |
-| ----------------------- | ------------ | ----- | ------------------ | ------- |
-| Baseline                | 256          | 3314  | down left greedy   | 20 July |
-| Baseline                | 512          | 3662  | Q Learning         | 20 July |
-| Baseline                | 256          | 2396  | Deep Q Learning    | 20 July |
-| Jo                      | 512          | 7522  | Human Play         | 20 July |
-| Jo                      | 1024         | 14088 | Deep Q Learning    | 22 July | 
-| Max                     | 2048         | 31264 | double-DQN / masks | 24 July |
-|                         |              |       |                    |         |
-|                         |              |       |                    |         |
-|                         |              |       |                    |         |
-|                         |              |       |                    |         |
-|                         |              |       |                    |         |
-|                         |              |       |                    |         |
-|                         |              |       |                    |         |
-
-bonus points if you beat me with deep q learning. i spent 2 days tuning and training. if you do better, let me know asap! :)
-
-FINAL CHALLENGE! 
-Big points and plushies for any good algorithms or methods for determining if a score is real or fake (or possible)
+- **WASD / Arrow keys:** Slide the tiles in manual play.
+- **Space:** Play or pause the replay viewer.
+- **Q / Esc:** Quit.
